@@ -12,7 +12,7 @@ import json
 import tempfile
 # from os.path import expanduser
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.wasprofile import WASProfile # type: ignore[import]
+from ansible_collections.kjeffery14.websphere.plugins.module_utils.wasprofile import WASProfile # type: ignore[import]
 
 def main():
     argument_spec=dict(

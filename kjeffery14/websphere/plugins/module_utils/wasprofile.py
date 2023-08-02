@@ -11,7 +11,7 @@ import re
 import json
 import tempfile
 # from os.path import expanduser
-from ansible.module_utils.wascommand import WASCommand #type: ignore[import]
+from ansible_collections.kjeffery14.websphere.plugins.module_utils.wascommand import WASCommand #type: ignore[import]
 
 class WASProfile:
     def __init__(self, module):

@@ -13,8 +13,8 @@ import tempfile
 # from os.path import expanduser
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.wasprofile import WASProfile # type: ignore[import]
-from ansible.module_utils.wasserver import WASServer # type: ignore[import]
+from ansible_collections.kjeffery14.websphere.plugins.module_utils.wasprofile import WASProfile # type: ignore[import]
+from ansible_collections.kjeffery14.websphere.plugins.module_utils.wasserver import WASServer # type: ignore[import]
 
 # Maintenance Package ID   7.0.0-WS-WAS-LinuxX64-FP0000045
 

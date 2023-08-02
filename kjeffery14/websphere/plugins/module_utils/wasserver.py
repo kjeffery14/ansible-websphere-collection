@@ -10,7 +10,7 @@ import os.path
 import re
 import json
 import tempfile
-from ansible.module_utils.wascommand import WASCommand # type: ignore[import]
+from ansible_collections.kjeffery14.websphere.plugins.module_utils.wascommand import WASCommand # type: ignore[import]
 
 class WASServer():
     def __init__(self, profile_inst, was_profile):

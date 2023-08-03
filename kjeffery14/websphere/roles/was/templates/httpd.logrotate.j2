@@ -1,0 +1,9 @@
+{{ http_log_directory }}/*.log {
+    size=10M
+    copytruncate
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+}

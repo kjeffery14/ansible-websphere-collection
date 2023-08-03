@@ -1,0 +1,21 @@
+# roles/was/templates/set_node_variable.j2
+# @version v1.01_2022-NOV-14
+# @author Kevin Jeffery
+# @dependency ansible_profile.py
+
+import json
+nodeName = '{{ was_node_name }}'
+symbolicName = '{{ was_variable_name }}'
+value = '{{ was_variable_value }}'
+ansibleResult = {'ansible_changed': False, 'warnings': []}
+changed, warnings = setNodeVariable(nodeName, symbolicName, value)
+if changed:
+  ansibleResult['ansible_changed'] = True
+  AdminConfig.save()
+  if nodeName != 'dmgr':
+    nodeSync = AdminControl.completeObjectName('type=NodeSync,node={{ was_node_name }},*')
+    warnings.append("SyncNode {{ was_node_name }}")
+    syncResult = AdminControl.invoke(nodeSync, 'sync')
+    warnings.append("Sync Result {{ was_node_name }}:{0}".format(syncResult))
+ansibleResult['warnings'] = warnings
+print (json.dumps(ansibleResult))

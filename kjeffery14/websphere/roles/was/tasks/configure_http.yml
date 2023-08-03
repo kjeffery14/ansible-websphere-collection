@@ -1,0 +1,59 @@
+---
+# roles/was/tasks/configure_http.yml
+# @version v1.02_2023-MAR-13
+# @author Kevin Jeffery
+
+- name: Configure Admin server
+  command:
+    cmd: "bin/postinst -i {{ http_home }} -t setupadm -v ADMINPORT={{ http_admin_port }} -v SETUPADMUSER={{ http_admin_id }} -v SETUPADMGROUP={{ http_admin_group }}"
+    chdir: "{{ http_home }}"
+  become: yes
+  tags:
+  - was
+  - was_ihs
+
+- name: Set the HTTP Admin password
+  command:
+    cmd: "bin/htpasswd -bc conf/admin.passwd {{ http_admin_id }} {{ http_admin_pw }}"
+    chdir: "{{ http_home }}"
+  become: yes
+  tags:
+  - was
+  - was_ihs
+
+- name: Configure WAS Plugin
+  include_tasks: configure_plugin.yml
+  when: "'plg' in was_components"
+  tags:
+  - was
+  - was_ihs
+  - was_plg
+ 
+- name: Deploy IHS Service file
+  template:
+    src: "ibmihs.service.j2"
+    dest: "/etc/systemd/system/ibmihs.service"
+    force: yes
+    owner: "{{ ansible_user }}"
+  become: "yes"
+  notify:
+  - Enable IHS Service
+  tags:
+  - was
+  - was_ihs
+
+- name: Deploy IHSAdmin Service file
+  template:
+    src: "ibmihsadmin.service.j2"
+    dest: "/etc/systemd/system/ibmihsadmin.service"
+    force: yes
+    owner: "{{ ansible_user }}"
+  become: "yes"
+  notify:
+  - Enable IHSAdmin Service
+  tags:
+  - was
+  - was_ihs
+
+- meta: flush_handlers
+  tags: always

@@ -1,0 +1,242 @@
+---
+# roles/was/tasks/main.yml
+# @version 1.13_2023-MAR-29
+# @author Kevin Jeffery
+
+- name: Disable selinux
+  lineinfile:
+    path: /etc/selinux/config
+    line: SELINUX=disabled
+    regex: ^SELINUX=
+  become: yes 
+  notify: Reboot server
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_wct
+  - selinux
+
+- meta: flush_handlers
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_wct
+  - selinux
+
+- name: Install Dependencies
+  vars:
+    packages_list: "{{ was_dependencies }}"
+  include_tasks: packages.yml
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_wct
+  - was_plg
+  - was_dependencies
+
+- name: WAS Users
+  vars:
+    user_list: "{{ was_users }}"
+    user_group: "{{ was_admin_group | default('') }}"
+  include_tasks: users_groups.yml
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_users
+
+- name: IHS Users
+  vars:
+    user_list: "{{ http_users }}"
+    user_group: "{{ http_admin_group | default('') }}"
+  include_tasks: users_groups.yml
+  when:
+  - http_users is defined
+  - http_users | length > 0
+  tags:
+  - was
+  - was_ihs
+  - http_users
+
+- name: Setup Logical Volumes
+  vars:
+    lvm_logical_volumes: "{{ was_logical_volumes }}"
+    lvm_vg_name: "{{ was_vg_name }}"
+    lvm_vg_device: "{{ was_vg_device | default('') }}"
+  include_tasks: logical_volumes.yml
+  when:
+    - was_logical_volumes is defined
+    - was_vg_name is defined
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_wct
+  - was_logical_volumes
+
+- name: IBM Softlink
+- name: Create ibm Directory
+  file:
+    path: "{{ ibm_root }}"
+    state: directory
+    mode: 0755
+    owner: root
+    group: root
+  become: yes
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_wct
+  - was_directories
+
+- name: Softlink IBM Directories
+  file:
+    src: "{{ ibm_root }}"
+    dest: "{{ ibm_soft }}"
+    state: link
+  become: yes
+  when: ibm_soft != ''
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_wct
+  - was_directories
+
+- name: WAS Staging Directory
+  file:
+    path: "{{ software_dest_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    mode: 02775
+  become: yes
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_wct
+  - was_directories
+
+- name: Get iim version
+  kjeffery14.websphere.imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: version
+  register: ret_version
+  changed_when: not (ret_version.data.installed | bool)
+  become: yes 
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_iim
+  - was_wct
+
+- name: Install IBM Installation Manager
+  include_tasks: install_iim.yml
+  vars:
+    repo_item: iim
+  when: not (ret_version.data.installed | bool)
+  tags:
+  - was
+  - was_as
+  - was_nd
+  - was_ihs
+  - was_iim
+  - was_wct
+
+- name: Install IBM WCT
+  include_tasks: install_wct.yml
+  when: "'wct' in was_components"
+  tags:
+  - was
+  - was_ihs
+  - was_wct
+
+- name: Install IBM HTTP Server
+  include_tasks: install_http.yml
+  when: "'ihs' in was_components or 'plg' in was_components"
+  tags:
+  - was
+  - was_ihs
+  - was_plg
+
+- name: Get WAS Network Deployment version
+  vars:
+    repo_item: nd
+  kjeffery14.websphere.imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: get
+    package_id: com.ibm.websphere.ND.v90
+  register: ret_version
+  changed_when: not (ret_version.data.installed | bool)
+  when: repo_item in was_components 
+  become: yes 
+  tags:
+  - was
+  - was_nd
+  - was_ifixes
+
+- name: Install WAS Network Deployment
+  vars:
+    repo_item: nd
+  include_tasks: install_was.yml
+  when:
+  - repo_item in was_components 
+  - not (ret_version.data.installed | bool)
+  tags:
+  - was
+  - was_nd
+
+- name: Install WAS ND iFixes
+  vars:
+    repo_item: nd
+    was_package_id: com.ibm.websphere.ND.v90
+  include_tasks: install_ifixes.yml
+  when:
+  - repo_item in was_components 
+  tags:
+  - was
+  - was_nd
+  - was_ifixes
+
+- name: Get WAS Application Server version
+  vars:
+    repo_item: as
+  kjeffery14.websphere.imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: get
+    package_id: com.ibm.websphere.AS.v90
+  register: ret_version
+  changed_when: not (ret_version.data.installed | bool)
+  when: repo_item in was_components 
+  become: yes 
+  tags:
+  - was
+  - was_as
+
+- name: Install WAS Application Server
+  vars:
+    repo_item: as
+  include_tasks: install_was.yml
+  when:
+  - repo_item in was_components 
+  - not (ret_version.data.installed | bool)
+  tags:
+  - was
+  - was_as

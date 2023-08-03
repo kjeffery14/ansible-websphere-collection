@@ -1,0 +1,13 @@
+---
+# roles/was/tasks/create_profile.yml
+# @version v1.04_2023-MAR-13
+# @author Kevin Jeffery
+
+- name: Populate service facts
+  service_facts:
+  tags: always
+
+- name: Create Profile
+  include_tasks: "create_{{ profile_item.profile_type }}_profile.yml"
+  when: profile_item.profile_type == 'dmgr' or profile_item.profile_type == 'managed'
+  tags: always

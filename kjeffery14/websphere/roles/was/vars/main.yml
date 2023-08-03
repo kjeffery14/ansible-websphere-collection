@@ -1,0 +1,282 @@
+---
+# roles/was/vars/main.yml
+# @version v1.09_2023-AUG-02
+# @author Kevin Jeffery
+
+was_repository_url:
+  ND: "http://www.ibm.com/software/repositorymanager/com.ibm.websphere.ND.{{ was_package_version }}"
+  PLG: "http://www.ibm.com/software/repositorymanager/com.ibm.websphere.PLG.{{ was_package_version }}"
+
+was_ihs_9_0_5_1:
+  dest: was_ihs
+  archive: was.repo.90501.ihs.zip
+  creates: repository.xml
+
+was_iim_1_9_2_1:
+  dest: iim
+  archive: agent.installer.linux.gtk.x86_64_1.9.2001.20211222_1411.zip
+  creates: jre_8.0.7000.20211215_1359
+
+was_jdk8_0_7_10:
+  dest: was_jdk8_0_7_10
+  archive: ibm-java-sdk-8.0-7.10-linux-x64-installmgr.zip
+  creates: repository.xml
+
+was_jdk8_0_7_15:
+  dest: was_jdk8_0_7_15
+  archive: ibm-java-sdk-8.0-7.15-linux-x64-installmgr.zip
+  creates: repository.xml
+
+was_nd_9_0_5_1:
+  dest: was_nd
+  archive: was.repo.90501.nd.zip
+  creates: repository.xml
+
+was_plg_9_0_5_1:
+  dest: was_plg
+  archive: was.repo.90501.plugins.zip
+  creates: repository.xml
+
+was_wct_9_0_5_1:
+  dest: was_wct
+  archive: was.repo.90501.wct.zip
+  creates: repository.xml
+
+was_fp11:
+  dest: was_fp11
+  archive: 9.0.5-WS-WAS-FP011.zip
+  creates: repository.xml
+
+was_fp12:
+  dest: was_fp12
+  archive: 9.0.5-WS-WAS-FP012.zip
+  creates: repository.xml
+
+was_fp13:
+  dest: was_fp13
+  archive: 9.0.5-WS-WAS-FP013.zip
+  creates: repository.xml
+
+was_fp14:
+  dest: was_fp14
+  archive: 9.0.5-WS-WAS-FP014.zip
+  creates: repository.xml
+
+was_ihsplg_fp11:
+  dest: was_ihsplg_fp11
+  archive: 9.0.5-WS-IHSPLG-FP011.zip
+  creates: repository.xml
+
+was_ihsplg_fp12:
+  dest: was_ihsplg_fp12
+  archive: 9.0.5-WS-IHSPLG-FP012.zip
+  creates: repository.xml
+
+was_ihsplg_fp13:
+  dest: was_ihsplg_fp13
+  archive: 9.0.5-WS-IHSPLG-FP013.zip
+  creates: repository.xml
+
+was_ihsplg_fp14:
+  dest: was_ihsplg_fp14
+  archive: 9.0.5-WS-IHSPLG-FP014.zip
+  creates: repository.xml
+
+was_wct_fp11:
+  dest: was_wct_fp11
+  archive: 9.0.5-WS-WCT-FP011.zip
+  creates: repository.xml
+
+was_wct_fp12:
+  dest: was_wct_fp12
+  archive: 9.0.5-WS-WCT-FP012.zip
+  creates: repository.xml
+
+was_wct_fp13:
+  dest: was_wct_fp13
+  archive: 9.0.5-WS-WCT-FP013.zip
+  creates: repository.xml
+
+was_wct_fp14:
+  dest: was_wct_fp14
+  archive: 9.0.5-WS-WCT-FP014.zip
+  creates: repository.xml
+
+was_ifixes:
+  nd:
+    '9.0.5.11':
+    - 9.0.5.11-WS-WASProd-IFPH43148
+    - 9.0.5.11-WS-WASProd-DistOnly-IFPH43760
+    - 9.0.0.0-WS-WASProd-IFPH46332
+    - 9.0.0.0-WS-WASProd-IFPH46342
+    '9.0.5.12':
+    - 9.0.5.12-WS-WAS-IFPH44339
+    - 9.0.0.0-WS-WASProd-IFPH46332
+    - 9.0.0.0-WS-WASProd-IFPH46342
+    - 9.0.5.12-WS-WAS-IFPH46816
+    '9.0.5.13':
+    - 9.0.5.13-WS-WAS-IFPH46816
+  '9.0.0.0-WS-WASProd-IFPH46332':
+    description: 'IBM WebSphere Application Server is vulnerable to Cross-site Scripting  (CVE-2022-22477 CVSS 6.1)'
+    archive: 9.0.0.0-ws-wasprod-ifph46332.zip
+  '9.0.0.0-WS-WASProd-IFPH46342':
+    description: 'IBM WebSphere Application Server is vulnerable to an Information Disclosure (CVE-2022-22473 CVSS 3.7)'
+    archive: 9.0.0.0-ws-wasprod-ifph46342.zip
+  '9.0.5.11-WS-WASProd-DistOnly-IFPH43760':
+    description: 'IBM WebSphere Application Server is vulnerable to Clickjacking (CVE-2021-39038)'
+    archive: 9.0.5.11-ws-wasprod-distonly-ifph43760.zip
+  '9.0.5.11-WS-WASProd-IFPH43148':
+    description: 'IBM WebSphere Application Server is vulnerable to remote code execution due to Dojo (CVE-2021-23450 CVSS 9.8)'
+    archive: 9.0.5.11-ws-wasprod-ifph43148.zip
+    wsadmin_cmd: "{{ was_home}}/bin/wsadmin.sh -lang jython -c \"AdminApp.update('isclite', 'file', '[-operation update -contents {{ was_home }}/systemApps/isclite.ear/isclite.war/WEB-INF/dojo.zip -contenturi isclite.war/WEB-INF/dojo.zip]')\""
+    wsadmin_exists: "{{ was_home }}/profiles/Dmgr01/config/cells/{{ was_ndm_cell }}/applications/isclite.ear/deployments/isclite/isclite.war/WEB-INF/dojo.zip"
+  '9.0.5.12-WS-WAS-IFPH44339':
+    description: 'IBM WebSphere Application Server is vulnerable to Spoofing (CVE-2022-22365 CVSS 5.6)'
+    archive: 9.0.5.12-ws-was-ifph44339.zip
+  '9.0.5.12-WS-WAS-IFPH46816':
+    description: ''
+    archive: 9.0.5.12-ws-was-ifph46816.zip
+
+was_ndm_params:
+  enableAdminSecurity: "{{ was_admin_security | default('true') | string }}" # Must be string true or false.
+  hostName: "{{ was_ndm_host }}"
+  nodeName: "{{ was_ndm_name }}"
+  cellName: "{{ was_ndm_cell }}"
+  isDefault: False
+
+was_node_params:
+  hostName: "{{ host_name }}"
+  nodeName: "{{ was_node_name }}"
+  isDefault: False
+
+was_repos:
+  ihs:
+    '9.0.5.11':
+    - "{{ was_ihs_9_0_5_1 }}"
+    - "{{ was_ihsplg_fp11 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.12':
+    - "{{ was_ihs_9_0_5_1 }}"
+    - "{{ was_ihsplg_fp12 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.13':
+    - "{{ was_ihs_9_0_5_1 }}"
+    - "{{ was_ihsplg_fp13 }}"
+    - "{{ was_jdk8_0_7_15 }}"
+  iim:
+    '1.9.2.1':
+    - "{{ was_iim_1_9_2_1 }}"
+  nd:
+    '9.0.5.11':
+    - "{{ was_nd_9_0_5_1 }}"
+    - "{{ was_fp11 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.12':
+    - "{{ was_nd_9_0_5_1 }}"
+    - "{{ was_fp12 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.13':
+    - "{{ was_nd_9_0_5_1 }}"
+    - "{{ was_fp13 }}"
+    - "{{ was_jdk8_0_7_15 }}"
+  plg:
+    '9.0.5.11':
+    - "{{ was_plg_9_0_5_1 }}"
+    - "{{ was_ihsplg_fp11 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.12':
+    - "{{ was_plg_9_0_5_1 }}"
+    - "{{ was_ihsplg_fp12 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.13':
+    - "{{ was_plg_9_0_5_1 }}"
+    - "{{ was_ihsplg_fp13 }}"
+    - "{{ was_jdk8_0_7_15 }}"
+  wct:
+    '9.0.5.11':
+    - "{{ was_wct_9_0_5_1 }}"
+    - "{{ was_wct_fp11 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.12':
+    - "{{ was_wct_9_0_5_1 }}"
+    - "{{ was_wct_fp12 }}"
+    - "{{ was_jdk8_0_7_10 }}"
+    '9.0.5.13':
+    - "{{ was_wct_9_0_5_1 }}"
+    - "{{ was_wct_fp13 }}"
+    - "{{ was_jdk8_0_7_15 }}"
+
+was_repo_list:
+  ihs:
+    '9.0.5.11':
+    - "{{ software_dest_dir }}/{{ was_ihs_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_ihsplg_fp11['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.12':
+    - "{{ software_dest_dir }}/{{ was_ihs_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_ihsplg_fp12['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.13':
+    - "{{ software_dest_dir }}/{{ was_ihs_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_ihsplg_fp13['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_15['dest'] }}/repository.config"
+  nd:
+    '9.0.5.11':
+    - "{{ software_dest_dir }}/{{ was_nd_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_fp11['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.12':
+    - "{{ software_dest_dir }}/{{ was_nd_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_fp12['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.13':
+    - "{{ software_dest_dir }}/{{ was_nd_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_fp13['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_15['dest'] }}/repository.config"
+  plg:
+    '9.0.5.11':
+    - "{{ software_dest_dir }}/{{ was_plg_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_ihsplg_fp11['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.12':
+    - "{{ software_dest_dir }}/{{ was_plg_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_ihsplg_fp12['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.13':
+    - "{{ software_dest_dir }}/{{ was_plg_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_ihsplg_fp13['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_15['dest'] }}/repository.config"
+  wct:
+    '9.0.5.11':
+    - "{{ software_dest_dir }}/{{ was_wct_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_wct_fp11['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.12':
+    - "{{ software_dest_dir }}/{{ was_wct_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_wct_fp12['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_10['dest'] }}/repository.config"
+    '9.0.5.13':
+    - "{{ software_dest_dir }}/{{ was_wct_9_0_5_1['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_wct_fp13['dest'] }}/repository.config"
+    - "{{ software_dest_dir }}/{{ was_jdk8_0_7_15['dest'] }}/repository.config"
+
+was_package_list:
+  v90:
+    iim:
+    - com.ibm.cic.agent
+    ihs:
+    - com.ibm.websphere.IHS.v90
+    - com.ibm.java.jdk.v8
+    plg:
+    - com.ibm.websphere.PLG.v90
+    - com.ibm.java.jdk.v8
+    nd:
+    - com.ibm.websphere.ND.v90
+    - com.ibm.java.jdk.v8
+    as:
+    - com.ibm.websphere.AS.v90
+    - com.ibm.java.jdk.v8
+    wct:
+    - com.ibm.websphere.WCT.v90
+    - com.ibm.java.jdk.v8
+

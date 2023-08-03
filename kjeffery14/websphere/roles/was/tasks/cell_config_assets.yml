@@ -1,0 +1,93 @@
+---
+# roles/was/tasks/cell_config_assets.yml
+# @version v1.00_2023-JAN-25
+# @author Kevin Jeffery
+
+- name: Create destination directories
+  file:
+    path: "{{ was_profile_home }}/{{ was_deployment_path }}/{{ item }}"
+    state: directory
+    owner: "{{ was_admin_id }}"
+    group: "{{ was_admin_group | default(was_admin_id) }}"
+    mode: 02770
+  loop: "{{ was_cell_config_files | json_query('[*].path') | unique }}"
+  become: yes
+  tags: always
+
+- name: Ensure ansible_profile.py is current
+  copy:
+    src: ansible_profile.py
+    dest: "{{ was_home }}/util/ansible_profile.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Template the Resync script
+  vars:
+    was_cluster_members: "{{ isim_was_app_members }}"
+  template:
+    src: resync_nodes.j2
+    dest: "{{ was_home }}/util/resync_nodes.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Template custom files
+  template:
+    src: "{{ was_customizations_dir }}/{{ item.template }}"
+    dest: "{{ was_profile_home }}/{{ was_deployment_path }}/{{ item.path }}/{{ item.name }}"
+    owner: "{{ was_admin_id }}"
+    group: "{{ was_admin_group | default(was_admin_id) }}"
+    mode: 0660
+  loop: "{{ was_cell_config_files | selectattr('template', 'defined') }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: yes
+  register: ret_out
+  tags: always
+
+- name: Set changed flag
+  set_fact:
+    "{{ was_changed_flag }}": True
+  when:
+    - was_changed_flag is defined
+    - ret_out.changed
+  tags: always
+
+- name: Copy custom files
+  copy:
+    src: "{{ was_customizations_dir }}/{{ item.file }}"
+    dest: "{{ was_profile_home }}/{{ was_deployment_path }}/{{ item.path }}/{{ item.name }}"
+    owner: "{{ was_admin_id }}"
+    group: "{{ was_admin_group | default(was_admin_id) }}"
+    mode: 0660
+  loop: "{{ was_cell_config_files | selectattr('file', 'defined') }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: yes
+  register: ret_out
+  tags: always
+
+- name: Set changed flag
+  set_fact:
+    "{{ was_changed_flag }}": True
+  when:
+    - was_changed_flag is defined
+    - ret_out.changed
+  tags: always
+
+- name: Resync nodes
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_ndm_profile }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ was_home }}/util/resync_nodes.py"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  become: yes
+  when:
+    - was_changed_flag is defined
+    - was_changed_flag | bool
+  tags: always

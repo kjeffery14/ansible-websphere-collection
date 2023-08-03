@@ -1,0 +1,33 @@
+---
+# roles/was/tasks/configure_http_servers.yml
+# @version v1.00_2023-JAN-31
+# @author Kevin Jeffery
+
+- name: Ensure ansible_profile.py is current
+  copy:
+    src: ansible_profile.py
+    dest: "{{ was_home }}/util/ansible_profile.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Template the HTTP server script
+  template:
+    src: was_webserver.j2
+    dest: "{{ was_home }}/util/was_webserver.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Run the HTTP server script
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_ndm_profile }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ was_home }}/util/was_webserver.py"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  become: yes
+  tags: always

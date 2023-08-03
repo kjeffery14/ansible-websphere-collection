@@ -1,0 +1,18 @@
+[Unit]
+Description={{ was_service_description }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+PIDFile={{ was_service_pidfile }}
+TimeoutStartSec=300
+ExecStart={{ was_service_exec_start }}
+ExecStop={{ was_service_exec_stop }} -username {{ was_admin_id }} -password {{ was_admin_pwd }}
+# Allow a minute for ExecStop before systemd sends SIGTERM
+TimeoutStopSec=60
+# JVM returns 143 after being killed with SIGTERM
+SuccessExitStatus=143
+
+[Install]
+WantedBy=default.target

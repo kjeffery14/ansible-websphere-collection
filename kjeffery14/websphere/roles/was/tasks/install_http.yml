@@ -1,0 +1,271 @@
+---
+# roles/was/tasks/install_http.yml
+# @version v1.02_2023-MAR-13
+# @author Kevin Jeffery
+
+- name: Get IHS version
+  vars:
+    repo_item: ihs
+  imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: get
+    package_id: com.ibm.websphere.IHS.v90
+  register: ret_version
+  changed_when: not (ret_version.data.installed | bool)
+  when: repo_item in was_components 
+  become: yes 
+  tags:
+  - was
+  - was_ihs
+
+- name: Set configuration flag
+  set_fact:
+    was_configure_http: True
+  # when: not (ret_version.data.installed | bool)
+  tags:
+  - was
+  - was_ihs
+  - was_plg
+
+- name: Install IHS
+  vars:
+    repo_item: ihs
+    was_home: "{{ http_home }}"
+    was_properties:
+    - "user.ihs.httpPort={{ http_port }}"
+  include_tasks: install_was.yml
+  when:
+  - repo_item in was_components 
+  - not (ret_version.data.installed | bool)
+  tags:
+  - was
+  - was_ihs
+
+- name: Get Plugins version
+  vars:
+    repo_item: plg
+  imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: get
+    package_id: com.ibm.websphere.PLG.v90
+  register: ret_version
+  changed_when: not (ret_version.data.installed | bool)
+  when: repo_item in was_components 
+  become: yes 
+  tags:
+  - was
+  - was_plg
+
+- name: Install Plugins
+  vars:
+    repo_item: plg
+    was_home: "{{ plugins_home }}"
+  include_tasks: install_was.yml
+  when:
+  - repo_item in was_components 
+  - not (ret_version.data.installed | bool)
+  tags:
+  - was
+  - was_plg
+
+- name: Configure HTTP Server
+  include_tasks: configure_http.yml
+  when:
+  - was_configure_http is defined
+  - was_configure_http | bool
+  tags:
+  - was
+  - was_ihs
+  - was_plg
+
+# Check for existance of SSL Keystore
+- name: Set SSL File names
+  set_fact:
+    keystore_src: "{{ idmca_home }}/{{ idmca_env }}/{{ host_name.split('.') | first }}"
+  tags:
+  - was
+  - was_ihs
+- name: Get Keyfile details
+  stat:
+    path: "{{ keystore_src }}.kdb"
+    get_checksum: no
+  register: ret_stat
+  changed_when: false
+  delegate_to: localhost
+  tags:
+  - was
+  - was_ihs
+  
+### Start Block - SSL configuration
+- block:
+  - name: Deploy SSL files
+    copy:
+      src: "{{ item }}"
+      dest: "{{ http_home }}/conf"
+      owner: "{{ http_admin_id }}"
+      group: "{{ http_admin_group }}"
+      mode: 0660
+    become: yes
+    loop:
+    - "{{ keystore_src }}.kdb"
+    - "{{ keystore_src }}.sth"
+    loop_control:
+      label: "{{ item | basename }}"
+    notify:
+    - Restart IHS
+    - Restart IHSAdmin
+  - name: Configure SSL Block
+    lineinfile:
+      path: "{{ http_httpd_conf }}"
+      line: "{{ item.line }}"
+      regex: "{{ item.regex }}"
+      insertafter: "{{ item.insertafter | default(omit) }}"
+      owner: "{{ http_admin_id }}"
+      group: "{{ http_admin_group }}"
+      mode: 0660
+    loop:
+    - name: KeyFile
+      line: "KeyFile {{ http_home }}/conf/{{ keystore_src | basename }}.kdb"
+      regex: "^.*KeyFile {{ http_home }}"
+    - name: LoadModule
+      line: "LoadModule ibm_ssl_module modules/mod_ibm_ssl.so"
+      regex: "^.*LoadModule ibm_ssl_module"
+    - name: Listen
+      line: "Listen 443"
+      regex: "^.*Listen 443"
+    - name: Virtual Host start
+      line: "<VirtualHost *:{{ http_ssl_port }}>"
+      regex: "^.*<VirtualHost \\*:"
+    - name: SSL ServerName
+      line: " ServerName service.{{ idmca_dns_suffix }}"
+      regex: "^ .*ServerName"
+    - name: SSLEnable
+      line: " SSLEnable"
+      regex: "^.*SSLEnable"
+    - name: SSLServerCert
+      line: " SSLServerCert {{ http_ssl_label }}"
+      regex: "^.*SSLServerCert"
+      insertafter: "^.*SSLEnable"
+    - name: Strict-Transport-Security
+      line: " Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains; preload\""
+      regex: "^.*Header always set Strict-Transport-Security"
+    - name: Virtual Host end
+      line: "</VirtualHost>"
+      regex: "^.*</VirtualHost>"
+    loop_control:
+      label: "{{ item.name }}"
+    notify: Restart IHS
+    become: yes
+  - name: Configure Admin SSL
+    lineinfile:
+      path: "{{ http_admin_conf }}"
+      line: "{{ item.line }}"
+      regex: "{{ item.regex }}"
+      insertafter: "{{ item.insertafter | default(omit) }}"
+      owner: "{{ http_admin_id }}"
+      group: "{{ http_admin_group }}"
+      mode: 0660
+    loop:
+    - name: LoadModule
+      line: "LoadModule ibm_ssl_module modules/mod_ibm_ssl.so"
+      regex: "^.*LoadModule ibm_ssl_module"
+    - name: SSLEnable
+      line: "SSLEnable"
+      regex: "^.*SSLEnable"
+    - name: SSLServerCert
+      line: "SSLServerCert {{ http_ssl_label }}"
+      regex: "^.*SSLServerCert"
+      insertafter: "^.*SSLEnable"
+    - name: KeyFile
+      line: "KeyFile {{ http_home }}/conf/{{ keystore_src | basename }}.kdb"
+      regex: "^.*Key[F,f]ile "
+    loop_control:
+      label: "{{ item.name }}"
+    notify: Restart IHSAdmin
+    become: yes
+
+  when:
+  - ret_stat.stat is defined
+  - ret_stat.stat.exists
+  tags:
+  - was
+  - was_ihs
+### End Block - SSL Configuration
+
+### Start Block - Relocate log files
+- block:
+  - name: Create Log directory
+    file:
+      path: "{{ http_log_directory }}"
+      state: directory
+      owner: "{{ http_admin_id }}"
+      group: "{{ http_admin_group }}"
+      mode: 02750 # LogRotate does not allow group write access to directory.
+    become: yes
+  - name: IHS Logs
+    lineinfile:
+      path: "{{ http_httpd_conf }}"
+      line: "{{ item.line }}"
+      regex: "{{ item.regex }}"
+      insertafter: "{{ item.insertafter | default(omit) }}"
+      owner: "{{ http_admin_id }}"
+      group: "{{ http_admin_group }}"
+      mode: 0660
+    loop:
+    - name: ErrorLog
+      line: "ErrorLog {{ http_log_directory }}/error.log"
+      regex: "^ErrorLog.*/error.*log"
+    - name: access common
+      line: "#CustomLog logs/access_log common"
+      regex: "^.*CustomLog.*/access_log common"
+    - name: access combined
+      line: "CustomLog {{ http_log_directory }}/access.log combined"
+      regex: "^.*CustomLog.*/access.*log combined"
+    loop_control:
+      label: "{{ item.name }}"
+    notify: Restart IHS
+    become: yes
+  - name: IHSAdmin Logs
+    lineinfile:
+      path: "{{ http_admin_conf }}"
+      line: "{{ item.line }}"
+      regex: "{{ item.regex }}"
+      insertafter: "{{ item.insertafter | default(omit) }}"
+      owner: "{{ http_admin_id }}"
+      group: "{{ http_admin_group }}"
+      mode: 0660
+    loop:
+    - name: ErrorLog
+      line: "ErrorLog {{ http_log_directory }}/admin_error.log"
+      regex: "^ErrorLog.*/admin_error.*log"
+    - name: admin_access common
+      line: "CustomLog {{ http_log_directory }}/admin_access.log common"
+      regex: "^CustomLog.*/admin_access.log common"
+    loop_control:
+      label: "{{ item.name }}"
+    notify: Restart IHSAdmin
+    become: yes
+  - name: logrotate Configuration file
+    template:
+      src: httpd.logrotate.j2
+      dest: /etc/logrotate.d/httpd
+      owner: root # Owner must be root for logrotate
+    become: yes
+  - name: Schedule log rotation daily
+    cron:
+      job: /usr/sbin/logrotate /etc/logrotate.d/httpd
+      name: HTTP Log Rotation
+      special_time: daily
+      user: root
+    become: yes
+
+  when:
+  - http_log_directory is defined
+  tags:
+  - was
+  - was_ihs
+### End Block - Relocate log files
+
+- meta: flush_handlers

@@ -1,0 +1,31 @@
+---
+# roles/was/tasks/install_wct.yml
+# @version v1.00_2023-FEB-01
+# @author Kevin Jeffery
+
+- name: Get WCT version
+  vars:
+    repo_item: wct
+  kjeffery14.websphere.imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: get
+    package_id: com.ibm.websphere.WCT.v90
+  register: ret_version
+  changed_when: not (ret_version.data.installed | bool)
+  when: repo_item in was_components 
+  become: yes 
+  tags:
+  - was
+  - was_wct
+
+- name: Install WCT
+  vars:
+    repo_item: wct
+    was_home: "{{ wct_home }}"
+  include_tasks: install_was.yml
+  when:
+  - not (ret_version.data.installed | bool)
+  tags:
+  - was
+  - was_wct

@@ -1,0 +1,97 @@
+---
+# roles/was/users_groups.yml
+# @version v1.04_2023-AUG-02
+# @author Kevin Jeffery
+
+- name: Get User List
+  getent:
+    database: passwd
+  become: yes
+  tags: always
+
+- name: Populate service facts
+  service_facts:
+  tags: always
+
+- name: Set Variables
+  set_fact:
+    group_list: "{{ group_list | default([]) + [{'group': item.group, 'gid': item.gid | default('')}] }}"
+    sssd_enabled: False
+  loop: "{{ user_list }}"
+  loop_control:
+    label: "{{ item.group }}"
+  tags: always
+
+- name: Save sssd state
+  set_fact:
+    sssd_enabled: True
+  when: ansible_facts['services']['sssd.service'] is defined and ansible_facts['services']['sssd.service']['state'] == 'running'
+  tags: always
+
+- name: Stop System Security Services
+  systemd:
+    name: sssd
+    state: stopped
+  become: yes
+  when: sssd_enabled | bool
+  tags: always
+
+- name: Create Groups
+  group:
+    name: "{{ item.group }}"
+    gid: "{{ item.gid | default(omit, True) }}"
+    state: "present"
+  become: yes
+  loop: "{{ group_list }}"
+  loop_control:
+    label: "{{ item.group }}"
+  when: item.group is defined
+  tags: always
+
+- name: Create Users
+  user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    home: "{{ item.home | default(omit) }}"
+    createhome: "{{ item.createhome | default(true) }}"
+    password: "{{ item.password | default(omit, True) }}"
+    comment: "{{ item.comment | default(omit, True) }}"
+    shell: "{{ item.shell | default(omit, True) }}"
+    update_password: on_create
+  become: yes
+  loop: "{{ user_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ret_create
+  tags: always
+
+- name: Set PNE
+  command:
+    cmd: "chage -I -1 -m 0 -M 99998 -E -1 {{ item.name }}"
+  args:
+    warn: no
+  become: yes
+  loop: "{{ user_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: ret_create.changed    
+  tags: always
+
+- name: Add {{ ansible_user }} to {{ user_group | default('') }}
+  user:
+    name: "{{ ansible_user }}"
+    groups: "{{ user_group }}"
+    append: yes
+  become: yes
+  when: user_group is defined and user_group != ''
+  tags: always
+
+# service sssd start
+- name: Start System Security Services
+  systemd:
+    name: sssd
+    state: started
+  become: yes
+  when: sssd_enabled | bool
+  tags: always

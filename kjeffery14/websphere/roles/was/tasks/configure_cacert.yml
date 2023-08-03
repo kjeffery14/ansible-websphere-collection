@@ -1,0 +1,47 @@
+---
+# roles/was/tasks/configure_cacert.yml
+# @version v1.01_2022-NOV-06
+# @author Kevin Jeffery
+
+- name: Deploy CA Certificate
+  copy:
+    src: "{{ was_cacert_src }}"
+    dest: "{{ was_cacert_dest }}"
+    owner: "{{ was_admin_id }}"
+    group: "{{ was_admin_group }}"
+    mode: 0660
+  become: yes
+  tags: always
+
+- name: Get list of cacerts signer certificates
+  shell:
+    cmd: "{{ was_java_bin }}/keytool -list -keystore {{ was_java_cacerts_path }} -storepass {{ was_java_cacerts_pwd }} | grep trustedCertEntry | cut -d ',' -f 1"
+    warn: no
+  become: yes
+  changed_when: false
+  register: ret_signers
+  tags: always
+
+- name: Add CA Certificate to cacerts
+  command:
+    cmd: "{{ was_java_bin }}/keytool -noprompt -importcert -keystore {{ was_java_cacerts_path }} -storepass {{ was_java_cacerts_pwd }} -alias signer_cert -file {{ was_cacert_dest }} -trustcacerts"
+  become: yes
+  when: "'signer_cert' not in ret_signers.stdout_lines"
+  tags: always
+
+- name: Get list of truststore signer Certificates
+  shell:
+    cmd: "{{ was_java_bin }}/keytool -list -keystore {{ was_truststore }} -storepass {{ was_truststore_pwd }} | grep trustedCertEntry | cut -d ',' -f 1"
+    warn: no
+  become: yes
+  changed_when: false
+  register: ret_signers
+  tags: always
+
+- name: Add CA Certificate to Profile Trust store
+  command:
+    cmd: "{{ was_java_bin }}/keytool -noprompt -importcert -keystore {{ was_truststore }} -storepass {{ was_truststore_pwd }} -alias signer_cert -file {{ was_cacert_dest }} -trustcacerts"
+  become: yes
+  when: "'signer_cert' not in ret_signers.stdout_lines"
+  tags: always
+

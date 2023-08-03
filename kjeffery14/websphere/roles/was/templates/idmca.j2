@@ -1,0 +1,14 @@
+# roles/was/templates/idmca.j2
+# @version v1.00_2022-SEP-20
+# @author Kevin Jeffery
+# @dependency ansible_profile.py
+
+import json
+
+ansibleResult = {'ansible_changed': False, 'warnings': []}
+changed, warnings = importCACerts ('{{ idmca_env }}', '{{ was_profile_home }}/{{ was_ndm_profile }}/etc/{{ idmca_env}}.cer')
+ansibleResult['warnings'] = warnings
+if changed:
+  ansibleResult['ansible_changed'] = True
+  AdminConfig.save()
+print (json.dumps(ansibleResult))

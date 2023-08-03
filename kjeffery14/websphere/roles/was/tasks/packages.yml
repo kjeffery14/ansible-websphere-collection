@@ -1,0 +1,41 @@
+---
+# roles/was/tasks/packages.yml
+# @version v1.03_2022-AUG-02
+# @author Kevin Jeffery
+
+- name: Install packages - RedHat/CentOS 7
+  ansible.builtin.yum:
+    name: "{{ packages_list }}"
+    state: "latest"
+    update_cache: "{{ packages_update_cache }}"
+    lock_timeout: 120
+  become: yes
+  when: 
+  - package_manager_enabled | bool
+  - ansible_distribution in ['RedHat','CentOS', 'Rocky', 'AlmaLinux']
+  - ansible_distribution_version is version('8.0', 'lt')
+  tags: always
+
+- name: Install packages - RedHat/CentOS 8
+  ansible.builtin.dnf:
+    name: "{{ packages_list }}"
+    state: "latest"
+    update_cache: "{{ packages_update_cache }}"
+    lock_timeout: 120
+  become: yes
+  when: 
+  - package_manager_enabled | bool
+  - ansible_distribution in ['RedHat','CentOS', 'Rocky', 'AlmaLinux']
+  - ansible_distribution_version is version('8.0', 'ge')
+  tags: always
+
+- name: Install packages - Debian
+  ansible.builtin.apt:
+    name: "{{ packages_list }}"
+    state: "latest"
+    update_cache: "{{ packages_update_cache }}"
+  become: yes
+  when:  
+  - package_manager_enabled | bool
+  - ansible_os_family == "Debian"
+  tags: always

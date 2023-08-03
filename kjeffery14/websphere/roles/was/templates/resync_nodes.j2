@@ -1,0 +1,16 @@
+# roles/was/templates/resync_nodes.j2
+# @version v1.00_2023-JAN-30
+# @author Kevin Jeffery
+# @dependency ansible_profile.py
+
+import json
+
+ansibleResult = {'ansible_changed': True, 'warnings': []}
+{% for item in was_cluster_members %}
+nodeSync = AdminControl.completeObjectName('type=NodeSync,node={{ item.node }},*')
+warnings.append("SyncNode {{ item.node }}")
+syncResult = AdminControl.invoke(nodeSync, 'sync')
+warnings.append("Sync Result {{ item.node }}:{0}".format(syncResult))
+{% endfor %}
+ansibleResult['warnings'] = warnings
+print (json.dumps(ansibleResult))

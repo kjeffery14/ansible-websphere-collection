@@ -1,0 +1,24 @@
+---
+# roles/was/tasks/install_iim.yml
+# @version v1.02_2022-SEP-17
+# @author Kevin Jeffery
+
+- name: Stage Binaries
+  include_tasks: stage_was.yml
+  vars: 
+    repo_item: iim
+    was_version: "{{ iim_version }}"
+
+- name: Install IBM Installation Manager
+  command:
+    cmd: "{{ software_dest_dir }}/iim/installc -installationDirectory {{ iim_home }} -acceptLicense -sVP"
+  when: not (ret_version.data.installed | bool)
+  become: yes
+
+- name: Get iim version
+  imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: version
+  register: ret_version
+  failed_when: not (ret_version.data.installed | bool)

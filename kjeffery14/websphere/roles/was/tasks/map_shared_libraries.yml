@@ -1,0 +1,48 @@
+---
+# roles/was/tasks/map_shared_libraries.yml
+# @version v1.00_2023-JAN-22
+# @author Kevin Jeffery
+
+- name: Ensure ansible_profile.py is current
+  copy:
+    src: ansible_profile.py
+    dest: "{{ was_home }}/util/ansible_profile.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Debug
+  debug:
+    msg: "{{ was_shared_library_map | to_nice_json }}"
+    verbosity: 3
+  tags: always
+
+- name: Template the Map Shared Library script
+  template:
+    src: map_shared_libraries.j2
+    dest: "{{ was_home }}/util/map_shared_libraries.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Run Map Shared Library script
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_profile_name }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ was_home }}/util/map_shared_libraries.py"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  register: ret_out
+  become: yes
+  tags: always
+
+- name: Set changed flag
+  set_fact:
+    "{{ was_changed_flag }}": True
+  when:
+    - was_changed_flag is defined
+    - ret_out.changed
+  tags: always

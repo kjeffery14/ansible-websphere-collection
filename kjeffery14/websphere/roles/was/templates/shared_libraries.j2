@@ -1,0 +1,27 @@
+# roles/was/templates/shared_libraries.j2
+# @version v1.00_2023-JAN-22
+# @author Kevin Jeffery
+# @dependency ansible_profile.py
+
+import json
+
+ansibleResult = {'ansible_changed': False, 'warnings': []}
+application_name = '{{ was_application_name }}'
+library_path = '{{ was_shared_library_path }}'
+changed = False
+warnings = []
+{% for item in was_shared_libraries %}
+reply, warnings = createSharedLibrary('{{ item.name }}', '{{ was_shared_library_path }}/{{ item.archive }}', '{{ item.description | default('''') }}', warnings)
+if reply: changed = True
+{% endfor %}
+if changed:
+  ansibleResult['ansible_changed'] = True
+  AdminConfig.save()
+{% for item in was_cluster_members %}
+  nodeSync = AdminControl.completeObjectName('type=NodeSync,node={{ item.node }},*')
+  warnings.append("SyncNode {{ item.node }}")
+  syncResult = AdminControl.invoke(nodeSync, 'sync')
+  warnings.append("Sync Result {{ item.node }}:{0}".format(syncResult))
+{% endfor %}
+ansibleResult['warnings'] = warnings
+print (json.dumps(ansibleResult))

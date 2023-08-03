@@ -1,0 +1,82 @@
+---
+# roles/was/tasks/configure_plugin.yml
+# @version v1.00_2023-APR-05
+# @author Kevin Jeffery
+
+- name: Plugin Directories
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ http_admin_id }}"
+    group: "{{ http_admin_group }}"
+    mode: 02770
+  loop:
+  - name: "HTTP_HOME/plugin/config/{{ http_server_name }}"
+    path: "{{ http_home }}/plugin/config/{{ http_server_name }}"
+  - name: "PLUGINS_HOME/config/{{ http_server_name }}"
+    path: "{{ plugins_home }}/config/{{ http_server_name }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: yes
+  tags: always
+
+- name: Enable Admin Console plugin propagation
+  command:
+    cmd: "bin/setupadm -usr {{ http_admin_id }} -grp {{ http_admin_group }} -cfg conf/httpd.conf -plg plugin/config/{{ http_node_name }}/plugin-cfg.xml -adm conf/admin.conf"
+    chdir: "{{ http_home }}"
+  become: yes
+  register: ret_out
+  failed_when: ret_out.rc not in [0, 90]
+  tags: always
+
+- name: Set Configuration file permissions
+  file:
+    path: "{{ http_home }}/conf/{{ item }}"
+    owner: "{{ http_admin_id }}"
+    group: "{{ http_admin_group }}"
+    mode: 0660
+  loop:
+  - admin.conf
+  - httpd.conf
+  become: yes
+  tags: always
+
+- name: Add HTTPServer dynamic libraries
+  lineinfile:
+    path: /etc/ld.so.conf
+    line: "{{ http_home }}/lib"
+    regex: "^{{ http_home }}/lib"
+  become: yes
+  register: ret_out
+  tags: always
+
+- name: Delete the ldd cache
+  file:
+    path: /etc/ld.so.cache
+    state: absent
+  become: yes
+  when: ret_out.changed
+  tags: always
+
+- name: Reload the ldd Configuration
+  command: /sbin/ldconfig
+  become: yes
+  when: ret_out.changed
+  tags: always
+
+- name: Template the Plugin response file
+  template:
+    src: "{{ http_node_type }}_ihs.j2"
+    dest: "{{ http_home }}/conf/was_plugin.txt"
+    owner: "{{ ansible_user }}"
+  register: ret_out
+  become: yes
+  tags: always
+
+- name: Configure the Plugin
+  command: "{{ wct_home }}/WCT/wctcmd.sh -tool pct -defLocPathname {{ plugins_home }} -defLocName {{ http_server_name }} -createDefinition -response {{ http_home }}/conf/was_plugin.txt"
+  become: yes
+  when: ret_out.changed
+  notify: Restart IHS
+  tags: always
+

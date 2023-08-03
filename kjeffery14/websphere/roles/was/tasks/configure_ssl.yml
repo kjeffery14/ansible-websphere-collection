@@ -1,0 +1,89 @@
+---
+# roles/was/tasks/configure_ssl.yml
+# @version v1.03_2022-DEC-15
+# @author Kevin Jeffery
+
+# Check for existance of SSL Keystore
+- name: Set SSL File variables
+  set_fact:
+    keystore_dest: "{{ was_profile_home }}/{{ was_ndm_profile }}/etc"
+    keystore_hosts: "{{ ((groups['was_ndm'] | default([])) + (groups['was_node'] | default([])))  | unique }}"
+    keystore_src: "{{ idmca_home }}/{{ idmca_env }}"
+  tags: always
+
+- name: Set SSL File and Node names
+  set_fact:
+    node_keyfiles: "{{ (node_keyfiles | default([])) + [{'nodeName': hostvars[item]['was_node_name'], 'keyName': hostvars[item]['host_name'].split('.')[0]}] }}"
+  loop: "{{ keystore_hosts }}"
+  tags: always
+
+- name: Keyfiles
+  debug:
+    msg: "{{ node_keyfiles }}"
+    verbosity: 3
+  tags: always
+
+- name: Deploy SSL Files
+  copy:
+    src: "{{ keystore_src }}/{{ item }}.p12"
+    dest: "{{ keystore_dest }}"
+    owner: "{{ was_admin_id }}"
+    group: "{{ was_admin_group }}"
+    mode: 0660
+  loop: "{{ keystore_hosts }}"
+  loop_control:
+    label: "{{ item }}.p12"
+  become: yes
+  tags: always
+
+- name: Ensure ansible_profile.py is current
+  copy:
+    src: ansible_profile.py
+    dest: "{{ was_home }}/util/ansible_profile.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Template SSL scripts
+  template:
+    src: "{{ item.template }}"
+    dest: "{{ was_home }}/util/{{ item.name }}"
+    owner: "{{ ansible_user }}"
+  loop:
+  - name: idmca.py
+    template: idmca.j2
+  - name: privatekeys.py
+    template: privatekeys.j2
+  loop_control:
+    label: "{{ item.name }}"
+  become: yes
+  tags: always
+
+- name: Run the idmca script
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_ndm_profile }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ was_home }}/util/idmca.py"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  become: yes
+  tags: always
+
+- name: Run the privatekeys script
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_ndm_profile }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ was_home }}/util/privatekeys.py"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  become: yes
+  notify:
+  - Stop NDM
+  - Start NDM
+  tags: always

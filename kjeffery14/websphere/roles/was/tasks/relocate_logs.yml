@@ -1,0 +1,46 @@
+---
+# roles/was/tasks/relocate_logs.yml
+# @version v1.01_2022-NOV-14
+# @author Kevin Jeffery
+
+- name: Create Log Directory
+  file:
+    path: "{{ was_log_directory }}/{{ was_node_name }}"
+    state: directory
+    owner: "{{ was_admin_id }}"
+    group: "{{ was_admin_group | default(was_admin_id) }}"
+    mode: 02770
+  become: yes
+  tags: always
+
+- name: Ensure ansible_profile.py is current
+  copy:
+    src: ansible_profile.py
+    dest: "{{ was_home }}/util/ansible_profile.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Template the variable script
+  vars:
+    was_variable_name: LOG_ROOT
+    was_variable_value: "{{ was_log_directory }}/{{ was_node_name }}"
+  template:
+    src: set_node_variable.j2
+    dest: "{{ was_home }}/util/{{ was_node_name }}_logs.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Run variable script
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_profile_name }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ was_home }}/util/{{ was_node_name }}_logs.py"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  become: yes
+  tags: always

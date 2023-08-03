@@ -1,0 +1,37 @@
+---
+# roles/was/tasks/get_was.yml
+# @version 1.07_2023-FEB-01
+# @author Kevin Jeffery
+
+- name: Repository Archives - {{ repo_item }}
+  copy:
+    src: "{{ software_source_dir }}/{{ item.archive }}"
+    dest: "{{ software_dest_dir }}/{{ item.archive }}"
+    owner: "{{ ansible_user }}"
+    mode: '0775'
+  loop: "{{ was_repos[repo_item][was_version] }}"
+  loop_control:
+    label: "{{ item.archive }}"
+  tags: always
+
+- name: Repository Directory - {{ repo_item }}
+  file:
+    path: "{{ software_dest_dir }}/{{ item.dest }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    mode: '2775'
+  loop: "{{ was_repos[repo_item][was_version] }}"
+  loop_control:
+    label: "{{ software_dest_dir }}/{{ item.dest }}"
+  tags: always
+  
+- name: Process Archives - {{ repo_item }}
+  unarchive:
+    src: "{{ software_dest_dir }}/{{ item.archive }}"
+    dest: "{{ software_dest_dir }}/{{ item.dest }}"
+    creates: "{{ software_dest_dir }}/{{ item.dest }}/{{ item.creates }}"
+    remote_src: yes
+  loop: "{{ was_repos[repo_item][was_version] }}"
+  loop_control:
+    label: "{{ item.archive }}"
+  tags: always

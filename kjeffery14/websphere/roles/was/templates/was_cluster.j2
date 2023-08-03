@@ -1,0 +1,25 @@
+# roles/was/templates/was_cluster.j2
+# @version v1.02_2022-NOV-04
+# @author Kevin Jeffery
+# @dependency ansible_profile.py
+
+import json
+
+ansibleResult = {'ansible_changed': False, 'warnings': []}
+clusterName = '{{ was_cluster_name }}'
+changed, warnings = createCluster(clusterName)
+{% for item in was_cluster_members %}
+reply, warnings = createClusterMember('{{ item.server }}', clusterName, '{{ item.node }}', warnings)
+if reply: changed = True
+{% endfor %}
+if changed:
+  ansibleResult['ansible_changed'] = True
+  AdminConfig.save()
+{% for item in was_cluster_members %}
+  nodeSync = AdminControl.completeObjectName('type=NodeSync,node={{ item.node }},*')
+  warnings.append("SyncNode {{ item.node }}")
+  syncResult = AdminControl.invoke(nodeSync, 'sync')
+  warnings.append("Sync Result {{ item.node }}:{0}".format(syncResult))
+{% endfor %}
+ansibleResult['warnings'] = warnings
+print (json.dumps(ansibleResult))

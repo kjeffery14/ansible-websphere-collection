@@ -1,0 +1,20 @@
+---
+# roles/was/tasks/remove_profile.yml
+# @version v1.00_2022-NOV-14
+# @author Kevin Jeffery
+
+- name: Remove Profile
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "delete"
+    profile_name: "{{ was_profile_name }}"
+    force: "{{ was_force_remove | default(False) }}"
+  become: yes
+  tags: always
+
+- name: Remove Profile Directory
+  file:
+    path: "{{ was_profile_home }}/{{ was_profile_name }}"
+    state: absent
+  become: yes
+  tags: always

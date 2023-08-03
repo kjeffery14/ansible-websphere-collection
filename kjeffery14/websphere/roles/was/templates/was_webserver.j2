@@ -1,0 +1,35 @@
+# roles/was/templates/was_webserver.j2
+# @version v1.00_2023-JAN-31
+# @author Kevin Jeffery
+# @dependency ansible_profile.py
+
+import json
+
+ansibleResult = {'ansible_changed': False, 'warnings': []}
+changed = False
+warnings = []
+{% for http_host_key in was_http_server_list %}
+nodeName = "{{ hostvars[http_host_key]['http_node_name'] }}"
+nodeType = "{{ hostvars[http_host_key]['http_node_type'] }}"
+hostName = "{{ hostvars[http_host_key]['host_name'] }}"
+name = "{{ hostvars[http_host_key]['http_server_name'] }}"
+webInstallRoot = "{{ hostvars[http_host_key]['http_home'] | default(http_home) }}"
+pluginInstallRoot = "{{ hostvars[http_host_key]['plugins_home'] | default(plugins_home) }}"
+adminUserID = "{{ hostvars[http_host_key]['http_admin_id'] | default(http_admin_id) }}"
+adminPasswd = "{{ hostvars[http_host_key]['http_admin_pw'] | default(http_admin_pw) }}"
+adminPort = "{{ hostvars[http_host_key]['http_admin_port'] | default(http_admin_port) }}"
+adminProtocol = "{{ hostvars[http_host_key]['http_admin_protocol'] | default('HTTP') }}"
+# Unmanaged HTTP Server Node
+if nodeType == 'unmanaged':
+  reply, warnings = createUnmanagedNode(nodeName, hostName)
+  if reply: changed = True
+# ***
+reply, warnings = createWebServer(nodeName, name, webInstallRoot, pluginInstallRoot, webPort='80', adminUserID=adminUserID, adminPasswd=adminPasswd, adminPort=adminPort, adminProtocol=adminProtocol, warnings=warnings)
+if reply: changed = True
+{% endfor %}
+
+if changed:
+  ansibleResult['ansible_changed'] = True
+  AdminConfig.save()
+ansibleResult['warnings'] = warnings
+print (json.dumps(ansibleResult))

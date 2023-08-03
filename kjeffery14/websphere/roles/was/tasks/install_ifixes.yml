@@ -1,0 +1,38 @@
+---
+# roles/was/tasks/install_ifixes.yml
+# @version v1.02_2021-FEB-01
+# @author Kevin Jeffery
+- name: Get WAS version
+  imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: get
+    package_id: "{{ was_package_id }}"
+  register: ret_version
+  become: yes 
+  tags: always
+
+- name: iFix List
+  set_fact:
+    was_ifixes_list: "{{ was_ifixes[repo_item][ret_version['data']['version']] | default([]) }}"
+  tags: always
+
+- name: Get Source Archives
+  copy:
+    src: "{{ software_source_dir }}/{{ was_ifixes[item]['archive'] }}"
+    dest: "{{ software_dest_dir }}/{{ was_ifixes[item]['archive'] }}"
+  loop: "{{ was_ifixes_list }}"
+  tags: always
+
+- name: Install iFixes
+  imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: install
+    package_id: "{{ item }}"
+    install_directory: "{{ was_home }}"
+    repositories: 
+    - "{{ software_dest_dir }}/{{ was_ifixes[item]['archive'] }}"
+  become: yes
+  loop: "{{ was_ifixes_list }}"
+  tags: always

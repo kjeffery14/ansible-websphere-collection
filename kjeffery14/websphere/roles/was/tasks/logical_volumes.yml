@@ -1,0 +1,49 @@
+---
+# roles/was/tasks/logical_volumes.yml
+# @version v1.04_2023-AUG-02
+# @author Kevin Jeffery
+
+- name: Create Volume group
+  lvg:
+    vg: "{{ lvm_vg_name }}"
+    pvs: "{{ lvm_vg_device }}"
+  become: yes
+  when:
+  - lvm_vg_device is defined
+  - lvm_vg_device != ''
+  tags: always
+
+- name: Create Logical Volume
+  lvol:
+    lv: "{{ item.name }}"
+    size: "{{ item.size | default(lvm_lv_default_size) }}"
+    vg: "{{ lvm_vg_name }}"
+    shrink: no
+  become: yes
+  loop: "{{ lvm_logical_volumes }}"
+  loop_control:
+    label: "Volume: {{ item.name }}"
+  tags: always
+
+- name: Make File System
+  filesystem:
+    dev: "/dev/mapper/{{ lvm_vg_name }}-{{ item.name }}"
+    fstype: "{{ item.fstype | default(lvm_lv_default_fstype) }}"
+  become: yes
+  loop: "{{ lvm_logical_volumes }}"
+  loop_control:
+    label: "Volume: {{ item.name }}"
+  tags: always
+
+- name: Mount File System
+  mount:
+    path: "{{ item.mount_point }}"
+    src: "/dev/mapper/{{ lvm_vg_name }}-{{ item.name }}"
+    fstype: "{{ item.fstype | default(lvm_lv_default_fstype) }}"
+    opts: "{{ item.opts | default(lvm_lv_default_opts) }}"
+    state: mounted
+  become: yes
+  loop: "{{ lvm_logical_volumes }}"
+  loop_control:
+    label: "Volume: {{ item.mount_point }}"
+  tags: always

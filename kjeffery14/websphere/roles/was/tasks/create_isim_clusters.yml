@@ -1,0 +1,65 @@
+---
+# roles/was/tasks/create_isim_clusters.yml
+# @version v1.01_2022-SEP-20
+# @author Kevin Jeffery
+
+- name: Script list
+  set_fact:
+    cluster_scripts:
+    - name: itim.cluster.py
+      script: "{{ was_home }}/util/itim.cluster.py"
+      cluster_name: "{{ isim_was_app_cluster }}"
+      cluster_members: "{{ isim_was_app_members }}"
+    - name: jms.cluster.py
+      script: "{{ was_home }}/util/jms.cluster.py"
+      cluster_name: "{{ isim_was_jms_cluster }}"
+      cluster_members: "{{ isim_was_jms_members }}"
+  tags: always
+
+- name: Ensure ansible_profile.py is current
+  copy:
+    src: ansible_profile.py
+    dest: "{{ was_home }}/util/ansible_profile.py"
+    owner: "{{ ansible_user }}"
+  become: yes
+  tags: always
+
+- name: Template the Cluster scripts
+  vars:
+    was_cluster_name: "{{ item.cluster_name }}"
+    was_cluster_members: "{{ item.cluster_members }}"
+  template:
+    src: was_cluster.j2
+    dest: "{{ item.script }}"
+    owner: "{{ ansible_user }}"
+  loop: "{{ cluster_scripts }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: yes
+  tags: always
+
+- name: Run ITIM Cluster script
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_ndm_profile }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ cluster_scripts[0].script }}"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  become: yes
+  tags: always
+
+- name: Run JMS Cluster script
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "wsadmin"
+    profile_name: "{{ was_ndm_profile }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    script: "{{ cluster_scripts[1].script }}"
+    lang: jython
+    profile: "{{ was_home }}/util/ansible_profile.py"
+  become: yes
+  tags: always

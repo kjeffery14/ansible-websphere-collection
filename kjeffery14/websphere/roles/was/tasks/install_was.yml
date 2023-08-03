@@ -1,0 +1,20 @@
+---
+# roles/was/tasks/install_was.yml
+# @version v1.03_2023-FEB-01
+# @author Kevin Jeffery
+
+- name: Stage Binaries
+  include_tasks: stage_was.yml
+  tags: always
+
+- name: Install WAS {{ repo_item }}
+  kjeffery14.websphere.imcl:
+    iim_home: "{{ iim_home }}"
+    iim_shared: "{{ iim_shared }}"
+    action: install_multi
+    package_list: "{{ was_package_list[was_package_version][repo_item] }}"
+    install_directory: "{{ was_home }}"
+    repositories: "{{ was_repo_list[repo_item][was_version] }}"
+    properties: "{{ was_properties | default(omit) }}"
+  become: yes
+  tags: always

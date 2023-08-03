@@ -1,0 +1,91 @@
+---
+# roles/was/tasks/create_managed_profile.yml
+# @version v1.04_2023-MAR-13
+# @author Kevin Jeffery
+
+- name: Create {{ profile_item.profile_name }} Profile
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "create"
+    profile_name: "{{ profile_item.profile_name }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    profile_path: "{{ profile_item.profile_path | default(was_home + '/profiles/' + profile_item.profile_name) }}"
+    profile_type: "managed"
+    profile_params: "{{ profile_item.profile_params | default(was_node_params) }}"
+  become: yes
+  register: ret_create
+  tags: always
+
+- name: Set SOAP Request Timeout
+  lineinfile:
+    dest: "{{ profile_item.profile_path | default(was_home + '/profiles/' + profile_item.profile_name) }}/properties/soap.client.props"
+    regexp: '^com\.ibm\.SOAP\.requestTimeout=1800'
+    line: "com.ibm.SOAP.requestTimeout=1800"
+  become: yes
+  tags: always
+
+- name: Deploy CA Certificate
+  include_tasks: configure_cacert.yml
+  vars:
+    was_truststore: "{{ was_profile_home }}/{{ was_app_profile }}/etc/trust.p12"
+    was_cacert_dest: "{{ was_profile_home }}/{{ was_app_profile }}/etc/{{ idmca_env }}.cer"
+  tags: always
+
+- name: Federate WAS Node
+  wasprofile:
+    was_home: "{{ was_home }}"
+    action: "add_node"
+    profile_name: "{{ profile_item.profile_name }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    dmgr_host: "{{ profile_item.ndm_host | default(was_ndm_host) | default(host_name) }}"
+    dmgr_port: "{{ profile_item.dmgr_port | default(omit) }}"
+  become: yes
+  register: ret_out
+  tags: always
+
+- name: Start nodeagent Server
+  command: "{{ was_profile_home }}/{{ profile_item.profile_name }}/bin/startNode.sh"
+  become: yes
+  when: ret_create.changed
+  register: ret_start
+  tags: always
+
+- name: Configure Logging
+  vars:
+    was_profile_name: "{{ was_app_profile }}"
+  include_tasks: relocate_logs.yml
+  when: was_log_directory is defined
+  tags: always
+
+- name: Stop nodeagent Server
+  command: "{{ was_profile_home }}/{{ profile_item.profile_name }}/bin/stopNode.sh -username {{ was_admin_id }} -password {{ was_admin_pwd }}"
+  become: yes
+  when: ret_start.changed
+  tags: always
+
+- name: Service variables
+  set_fact:
+    was_service_pidpath: "{{ (was_profile_home + '/' + was_app_profile + '/logs') if was_log_directory is not defined else was_log_directory + '/' +  was_node_name  }}"
+  tags: always
+
+- name: Deploy NodeAgent Service file
+  vars:
+    was_service_description: "NodeAgent - {{ was_app_profile }}"
+    was_service_pidfile: "{{ was_service_pidpath }}/nodeagent/nodeagent.pid"
+    was_service_exec_start: "{{ was_profile_home }}/{{ was_app_profile }}/bin/startNode.sh"
+    was_service_exec_stop: "{{ was_profile_home }}/{{ was_app_profile }}/bin/stopNode.sh"
+  template:
+    src: "was.service.j2"
+    dest: "/etc/systemd/system/{{ was_app_profile }}.service"
+    force: yes
+    owner: "{{ ansible_user }}"
+  become: "yes"
+  notify:
+  - Enable NodeAgent Service
+  - Reboot server
+  tags: always
+
+- meta: flush_handlers
+  tags: always

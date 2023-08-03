@@ -1,0 +1,49 @@
+# roles/was/templates/privatekeys.j2
+# @version v1.01_2023-FEB-03
+# @dependency ansible_profile.py
+
+import json
+
+ansibleResult = {'ansible_changed': False, 'warnings': []}
+changed, warnings = importPersonalCert('CellDefaultKeyStore', None, '{{ host_name.split('.') | first }}', '{{ was_profile_home }}/{{ was_ndm_profile }}/etc/{{ host_name.split('.') | first }}.p12', '{{ idmca_pwd }}')
+
+{% for item in node_keyfiles %}
+reply, warnings = importPersonalCert('NodeDefaultKeyStore', '{{ item.nodeName }}', '{{ item.keyName }}', '{{ was_profile_home }}/{{ was_ndm_profile }}/etc/{{ item.keyName }}.p12', '{{ idmca_pwd }}', warnings=warnings)
+if reply: changed = True
+{% endfor %}
+
+if changed:
+  changed = True
+  AdminConfig.save()
+
+reply, warnings = setSSLConfig('CellDefaultSSLSettings', '{{ host_name.split('.') | first }}', None, warnings=warnings)
+if reply:
+  changed = True
+  AdminConfig.save()
+
+reply, warnings = setSSLConfig('XDADefaultSSLSettings', '{{ host_name.split('.') | first }}', None, warnings=warnings)
+if reply:
+  changed = True
+  AdminConfig.save()
+
+reply, warnings = setSSLConfigGroup('CellDefaultSSLSettings', '{{ host_name.split('.') | first }}', None, warnings=warnings)
+if reply:
+  changed = True
+  AdminConfig.save()
+
+{% for item in node_keyfiles %}
+reply, warnings = setSSLConfig('NodeDefaultSSLSettings', '{{ item.keyName }}', '{{ item.nodeName }}', warnings=warnings)
+if reply:
+  changed = True
+  AdminConfig.save()
+
+reply, warnings = setSSLConfigGroup('NodeDefaultSSLSettings', '{{ item.keyName }}', '{{ item.nodeName }}', warnings=warnings)
+if reply:
+  changed = True
+  AdminConfig.save()
+{% endfor %}
+
+if changed:
+  ansibleResult['ansible_changed'] = True
+ansibleResult['warnings'] = warnings
+print (json.dumps(ansibleResult))

@@ -1,0 +1,86 @@
+---
+# roles/was/defaults/main.yml
+# @version v1.10_2023-AUG-02
+# @author Kevin Jeffery
+
+http_admin_conf: "{{ http_home }}/conf/admin.conf"
+http_admin_id: "ihsadmin"
+# http_admin_pw: ""
+http_admin_group: "ihsadmin"
+http_admin_port: 8008 # *** HTTP Server Administrator Port
+http_home: "/opt/ibm/HTTPServer" # *** HTTP Server install directory
+http_httpd_conf: "{{ http_home }}/conf/httpd.conf"
+http_port: 80 # *** HTTP Server Port
+# http_users:
+# - name: "{{ http_admin_id }}"
+#   uid:
+#   group: "{{ http_admin_group }}"
+#   gid:
+#   password: "{{ http_admin_pw }}"
+#   comment:
+# http_setup_admin: "false"
+# http_was_name: "webserver1" # IHS Server Name
+# http_was_host: "{{ inventory_hostname }}" # *** WebSphere Application Server hostname
+# http_was_node_name: "node1" # *** WebSphere Application Server Node name
+http_ssl_label: "{{ inventory_hostname('.') | first }}"
+http_ssl_port: 443
+
+ibm_root: /opt/ibm
+ibm_soft: /opt/IBM
+
+iim_version: 1.9.2.1
+iim_home: /opt/ibm/InstallationManager
+iim_shared: /opt/ibm/IMShared
+
+lvm_lv_default_size: 50G
+lvm_lv_default_fstype: xfs
+lvm_lv_default_opts: defaults
+
+# Use this variable to disable your package manager if your system is not connected to any reposiotry
+package_manager_enabled: True
+packages_update_cache: no
+
+plugins_home: "/opt/ibm/WebSphere/Plugins" # *** HTTP Plugin Directory
+
+software_source_dir: /ansible/software
+software_dest_dir: /opt/ibm/software
+
+was_admin_id: wasadmin
+# was_admin_pwd: 
+was_admin_group: wasadmin
+was_admin_security: "true"
+# was_cacert_src: ""
+was_dependencies:
+- unzip
+was_home: /opt/ibm/WebSphere/AppServer
+was_host: "{{ inventory_hostname }}"
+was_http_port: 9080
+was_https_port: 9443
+was_java_bin: "{{ was_java_home }}/bin"
+was_java_home: "{{ was_home }}/java/8.0/jre"
+was_java_cacerts_pwd: changeit
+was_java_cacerts_path: "{{ was_java_home }}/lib/security/cacerts"
+was_keystore: ""
+was_mem_size: 1024
+was_ndm_cell: WAS9_CELL
+was_ndm_host: "{{ host_name }}"
+was_ndm_name: "dmgr"
+was_ndm_profile: "Dmgr01"
+was_ndm_port: "9043"
+was_node_profile: "Node01"
+was_node_name: "node1"
+was_node_port: "9443"
+was_package_version: v90
+was_profile_home: "{{ was_home }}/profiles"
+# was_users:
+# - name: "{{ was_admin_id }}"
+#   uid:
+#   group: "{{ was_admin_group }}"
+#   gid:
+#   password: "{{ was_admin_pwd }}"
+#   comment:
+was_server: "server1"
+was_truststore_pwd: WebAS
+was_version: 9.0.5.12
+
+wct_home: /opt/ibm/WebSphere/Toolbox

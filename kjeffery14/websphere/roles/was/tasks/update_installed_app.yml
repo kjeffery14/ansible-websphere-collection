@@ -1,0 +1,26 @@
+---
+# roles/was/tasks/update_installed_app.yml
+# @version v1.01_2023-JAN-22
+# @author Kevin Jeffery
+
+- name: Deploy Custom Assets
+  copy:
+    src: "{{ was_customizations_dir }}/{{ item.file }}"
+    dest: "{{ was_profile_home }}/{{ was_deployment_path }}/{{ item.path }}/{{ item.name }}"
+    owner: "{{ was_admin_id }}"
+    group: "{{ was_admin_group | default(was_admin_id) }}"
+    mode: 0660
+  loop: "{{ was_deployment_assets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ret_out
+  become: yes
+  tags: always
+
+- name: Set changed flag
+  set_fact:
+    "{{ was_changed_flag }}": True
+  when:
+    - was_changed_flag is defined
+    - ret_out.changed
+  tags: always

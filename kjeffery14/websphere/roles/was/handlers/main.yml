@@ -1,0 +1,72 @@
+---
+# roles/was/handlers/main.yml
+# @version v1.05_2023-MAR-13
+# @author Kevin Jeffery
+
+- name: Enable IHS Service
+  systemd:
+    name: "ibmihs.service"
+    enabled: yes
+    state: started
+  become: "yes"
+  tags: always
+
+- name: Enable Dmgr Service
+  systemd:
+    name: "{{ was_ndm_profile }}"
+    enabled: yes
+    state: started
+  become: yes
+  tags: always
+
+- name: Enable NodeAgent Service
+  systemd:
+    name: "{{ was_app_profile }}"
+    enabled: yes
+    # state: started
+  become: yes
+  tags: always
+
+- name: Enable IHSAdmin Service
+  systemd:
+    name: "ibmihsadmin.service"
+    enabled: yes
+    state: started
+  become: "yes"
+  tags: always
+
+- name: Restart IHS
+  command: "{{ http_home }}/bin/apachectl restart"
+  become: yes
+  tags: always
+  
+- name: Restart IHSAdmin
+  systemd:
+    name: "ibmihsadmin.service"
+    state: restarted
+  become: yes
+  tags: always
+
+- name: Stop NDM
+  command: "{{ was_profile_home }}/{{ was_ndm_profile }}/bin/stopManager.sh -username {{ was_admin_id }} -password {{ was_admin_pwd }}"
+  failed_when: False
+  changed_when: "'ADMU4000I: Server dmgr stop completed.' in ret_out.stdout_lines"
+  become: yes
+  register: ret_out
+  tags: always
+
+- name: Start NDM
+  wasserver:
+    was_home: "{{ was_home }}"
+    action: start
+    profile_name: "{{ was_ndm_profile }}"
+    username: "{{ was_admin_id }}"
+    password: "{{ was_admin_pwd }}"
+    server_name: dmgr
+  become: yes
+  tags: always
+
+- name: Reboot server
+  reboot:
+  become: yes
+  tags: always

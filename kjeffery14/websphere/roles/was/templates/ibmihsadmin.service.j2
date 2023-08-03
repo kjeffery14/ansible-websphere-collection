@@ -1,0 +1,15 @@
+# roles/was/templates/ibmihsadmin.service.j2 
+# @version 1.00_2022-SEP-17
+# @author Kevin Jeffery
+[Unit]
+Description=IBM HTTP Admin
+
+[Service]
+Type=oneshot
+ExecStart={{ http_home }}/bin/adminctl -k start
+ExecStop={{ http_home }}/bin/adminctl -k stop
+User=root
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

@@ -133,3 +133,9 @@ dmypy.json
 
 # vscode
 .vscode
+
+# archives
+**.tar
+**.tar.gz
+**.7z
+**.zip
